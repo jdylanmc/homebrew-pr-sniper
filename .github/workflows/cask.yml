@@ -18,29 +18,6 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Diagnose cold release-wrapper audit without credentials or publication
-        shell: bash --noprofile --norc -euo pipefail {0}
-        run: |
-          git clone --quiet --depth 1 --branch v0.1.1 https://github.com/jdylanmc/pr-sniper.git "$RUNNER_TEMP/pr-sniper-audit-context"
-          export CASK_CANDIDATE="$PWD/Casks/pr-sniper.rb"
-          cd "$RUNNER_TEMP/pr-sniper-audit-context"
-          python3 -B - <<'PY'
-          import os
-          from pathlib import Path
-          import sys
-          sys.path.insert(0, "scripts")
-          import release
-          original = release.subprocess.run
-          def diagnose(args, **kwargs):
-              result = original(args, **kwargs)
-              if args[0] == "brew":
-                  print("AUDIT COMMAND:", args[:4], flush=True)
-                  print(result.stdout, flush=True)
-                  print(result.stderr, flush=True)
-              return result
-          release.subprocess.run = diagnose
-          release.validate_cask(Path(os.environ["CASK_CANDIDATE"]).read_text())
-          PY
       - name: Validate published casks, or identify unreleased bootstrap
         shell: bash --noprofile --norc -euo pipefail {0}
         run: |
