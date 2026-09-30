@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -21,6 +22,52 @@ def manifest():
 
 
 class PublisherTests(unittest.TestCase):
+    def test_workflows_authenticate_both_metadata_and_homebrew_requests(self):
+        root = Path(__file__).resolve().parents[1]
+        for workflow in ("cask.yml", "publish.yml"):
+            content = (root / ".github/workflows" / workflow).read_text()
+            self.assertIn("GITHUB_TOKEN: ${{ github.token }}", content)
+            self.assertIn("HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}", content)
+
+    def test_native_verification_does_not_inherit_api_tokens(self):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-one", "HOMEBREW_GITHUB_API_TOKEN": "synthetic-two"}), \
+                patch.object(publish.subprocess, "run") as native:
+            native.return_value.returncode = 0
+            native.return_value.stdout = b"ok"
+            publish.native(["codesign", "--verify", "fixture"])
+            self.assertNotIn("GITHUB_TOKEN", native.call_args.kwargs["env"])
+            self.assertNotIn("HOMEBREW_GITHUB_API_TOKEN", native.call_args.kwargs["env"])
+
+    def test_github_metadata_reads_use_scoped_token_but_downloads_do_not(self):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-api-token"}), \
+                patch.object(publish.urllib.request, "build_opener") as opener, \
+                patch.object(publish.json, "load", return_value={}):
+            publish.api(f"/repos/{publish.SOURCE}/releases/tags/v0.1.1")
+            request = opener.return_value.open.call_args.args[0]
+            self.assertEqual(request.get_header("Authorization"), "Bearer synthetic-api-token")
+            self.assertEqual(request.full_url, f"https://api.github.com/repos/{publish.SOURCE}/releases/tags/v0.1.1")
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-api-token"}), \
+                patch.object(publish.urllib.request, "urlopen") as download:
+            response = download.return_value.__enter__.return_value
+            response.url = "https://release-assets.githubusercontent.com/fixture"
+            response.read.side_effect = [b"fixture", b""]
+            url = f"https://github.com/{publish.SOURCE}/releases/download/v0.1.1/file.zip"
+            publish.download(url, Path(root) / "file.zip", 7)
+            self.assertEqual(download.call_args.args, (url,))
+            self.assertNotIn("headers", download.call_args.kwargs)
+
+    def test_forbidden_api_response_is_classified_without_leaking_body_or_token(self):
+        for headers, category in [({"X-RateLimit-Remaining": "0"}, "rate-limited"), ({}, "forbidden")]:
+            error = urllib.error.HTTPError("https://api.github.com", 403, "private body", headers, None)
+            with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-api-token"}), \
+                    patch.object(publish.urllib.request, "build_opener") as opener:
+                opener.return_value.open.side_effect = error
+                with self.assertRaises(publish.Failure) as result:
+                    publish.api(f"/repos/{publish.SOURCE}/releases/tags/v0.1.1")
+                self.assertIn(category, str(result.exception))
+                self.assertNotIn("private body", str(result.exception))
+                self.assertNotIn("synthetic-api-token", str(result.exception))
+
     def test_existing_cask_matches_the_publisher_format(self):
         content = (Path(__file__).resolve().parents[1] / "Casks/pr-sniper.rb").read_text()
         tag = "v" + re.search(r'^  version "([^"]+)"$', content, re.M)[1]

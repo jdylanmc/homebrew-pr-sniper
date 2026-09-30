@@ -36,6 +36,16 @@ The publisher runs from this repository's `main`, independently downloads and
 checks the public release/tag/manifest/checksum, and verifies the expected
 Developer ID team from the public `APPLE_TEAM_ID` repository variable. Apple
 private keys and signing credentials never enter this repository.
+GitHub metadata requests use the job's scoped API token, including public
+source-repository reads; they do not rely on the shared runner's unauthenticated
+API quota. Archive/CDN downloads remain credential-free. API errors distinguish
+an exhausted quota from other forbidden responses without exposing response
+bodies or token values.
+Homebrew receives that job token through its supported
+`HOMEBREW_GITHUB_API_TOKEN` variable during audit/install; it needs no extra
+personal token. Native signature-verification subprocesses do not inherit either
+API token. A hosted failure explicitly confirmed shared-IP quota exhaustion in
+Homebrew, explaining why the unauthenticated audit could pass on another runner.
 
 `Publish verified cask` handles `repository_dispatch` type `pr-sniper-release`
 with `client_payload.tag`, or manual workflow dispatch with an existing stable

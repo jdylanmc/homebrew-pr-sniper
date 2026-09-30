@@ -4,6 +4,9 @@
 
 ### Added
 
+- Authenticate publisher metadata reads with the existing scoped Actions token;
+  keep release downloads credential-free and classify API failures safely.
+
 - Own cask publication in this tap, with direct online audit logs, immutable
   public-release verification and a disposable CI-only installation check.
   Support existing-release recovery without re-signing or replacing app assets.

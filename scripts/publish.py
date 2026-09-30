@@ -50,12 +50,12 @@ def api(path, method="GET", body=None, missing=False):
             "Unexpected GitHub repository.")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "pr-sniper-tap",
                "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json"}
+    token = os.environ.get("GITHUB_TOKEN")
+    require(token, "Missing repository-scoped GitHub API token.")
+    headers["Authorization"] = "Bearer " + token
     if method != "GET":
         require(path == f"/repos/{TAP}/contents/Casks/pr-sniper.rb" and method == "PUT",
                 "Only the owned cask can be updated.")
-        token = os.environ.get("GITHUB_TOKEN")
-        require(token, "Missing repository-scoped publisher token.")
-        headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request("https://api.github.com" + path, method=method, headers=headers,
                                      data=json.dumps(body).encode() if body is not None else None)
     try:
@@ -64,7 +64,10 @@ def api(path, method="GET", body=None, missing=False):
     except urllib.error.HTTPError as error:
         if missing and error.code == 404:
             return None
-        raise Failure(f"GitHub {method} returned HTTP {error.code}; no mutation retry.") from None
+        category = "rate-limited" if error.headers.get("X-RateLimit-Remaining") == "0" else (
+            "forbidden" if error.code == 403 else "unauthorized" if error.code == 401 else "request-failed"
+        )
+        raise Failure(f"GitHub {method} returned HTTP {error.code} ({category}); no automatic retry.") from None
     except (OSError, ValueError):
         raise Failure(f"GitHub {method} outcome unavailable; inspect state before retrying.") from None
 
@@ -202,7 +205,9 @@ def prepare(candidate=False):
 
 
 def native(args):
-    result = subprocess.run(args, capture_output=True, timeout=120, check=False)
+    environment = {name: value for name, value in os.environ.items()
+                   if name not in ("GITHUB_TOKEN", "HOMEBREW_GITHUB_API_TOKEN")}
+    result = subprocess.run(args, capture_output=True, timeout=120, check=False, env=environment)
     require(result.returncode == 0, "Native installed-app verification failed: " + args[0])
     return result.stdout or result.stderr
 
