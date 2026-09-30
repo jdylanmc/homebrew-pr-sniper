@@ -3,12 +3,9 @@
 Homebrew distribution for [PR Sniper](https://github.com/jdylanmc/pr-sniper).
 Apple Silicon, macOS 13.5 or later.
 
-**Bootstrap:** the first signed/notarized release has not been published yet.
-There is deliberately no placeholder cask with invented downloads or checksums.
-The release workflow creates `Casks/pr-sniper.rb` after verifying the real
-published archive.
-
-Once the first cask is present:
+The cask references the immutable, Developer ID-signed and Apple-notarized
+[v0.1.1 release](https://github.com/jdylanmc/pr-sniper/releases/tag/v0.1.1).
+Its checksum is verified against the published release manifest and archive.
 
 ```sh
 brew install --cask jdylanmc/pr-sniper/pr-sniper
