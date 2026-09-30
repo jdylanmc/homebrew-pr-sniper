@@ -1,0 +1,42 @@
+name: Publish verified cask
+
+on:
+  repository_dispatch:
+    types: [pr-sniper-release]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing public stable PR Sniper release tag
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: pr-sniper-cask-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.client_payload.tag }}
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_DEVELOPER: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Validate immutable public release and prepare cask
+        run: python3 -B scripts/publish.py prepare
+      - name: Audit, install, verify and uninstall only in disposable CI
+        run: bash scripts/verify-install.sh
+      - name: Publish only the exact validated cask
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/publish.py commit

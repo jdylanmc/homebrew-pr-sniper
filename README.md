@@ -31,10 +31,31 @@ notarizes/staples and verifies the archive. Only afterward does it publish the
 versioned ZIP and checksum/provenance files and update this cask's URL/checksum.
 Same-version checksum replacement and downgrade are rejected.
 
-The publishing token has Contents write access only to this repository. It
-cannot change Apple credentials in the application repository. Push and PR
-validation checks cask style, syntax and online metadata; the release job also
-checks the generated cask before updating it.
+The application's fine-grained token only dispatches this tap's publisher.
+The publisher runs from this repository's `main`, independently downloads and
+checks the public release/tag/manifest/checksum, and verifies the expected
+Developer ID team from the public `APPLE_TEAM_ID` repository variable. Apple
+private keys and signing credentials never enter this repository.
+
+`Publish verified cask` handles `repository_dispatch` type `pr-sniper-release`
+with `client_payload.tag`, or manual workflow dispatch with an existing stable
+tag. The payload is a selector, not trusted provenance: only the fixed PR Sniper
+repository supplies assets. PR and push CI exercise the same online audit and
+Homebrew install/verify/uninstall flow in a disposable runner-only app directory.
+They never launch the application or publish a cask.
+
+Only after those checks pass does the main publisher use its own
+repository-scoped `GITHUB_TOKEN` to update the exact cask file. It checks the
+original file SHA again, refuses downgrade/same-version replacement, and treats
+an already-matching cask as a no-op. Run the publisher manually for an existing
+version to recover the tap without re-signing or retagging the app. Errors retain
+their direct Homebrew logs. A failed publisher does not replace the prior cask.
+
+The application release dispatches once and waits for matching published cask
+bytes. A timeout is unconfirmed, not success or permission to blindly redispatch.
+The first v0.1.1 cask was recovered through a separately reviewed/authorized PR
+after the original app-context tap audit failed; the new publisher does not
+claim the old failure's cause was proven.
 
 Do not manually point the cask at CI artifacts, mutable `latest` downloads,
 unnotarized builds, or `sha256 :no_check`. See

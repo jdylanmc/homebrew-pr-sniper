@@ -14,25 +14,14 @@ jobs:
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_DEVELOPER: "1"
+      APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - name: Validate published casks, or identify unreleased bootstrap
-        shell: bash --noprofile --norc -euo pipefail {0}
-        run: |
-          shopt -s nullglob
-          casks=(Casks/*.rb)
-          if [ "${#casks[@]}" -eq 0 ]; then
-            echo "Tap bootstrap: no release cask exists yet; no installability claim."
-            exit 0
-          fi
-          test "${#casks[@]}" -eq 1
-          test "${casks[0]}" = "Casks/pr-sniper.rb"
-          ruby -c "${casks[0]}"
-          brew tap jdylanmc/pr-sniper https://github.com/jdylanmc/homebrew-pr-sniper
-          tap="$(brew --repository jdylanmc/pr-sniper)"
-          mkdir -p "$tap/Casks"
-          cp "${casks[0]}" "$tap/Casks/pr-sniper.rb"
-          brew style --cask jdylanmc/pr-sniper/pr-sniper
-          brew audit --cask --online jdylanmc/pr-sniper/pr-sniper
+      - name: Publisher contracts
+        run: python3 -B -m unittest discover -s tests -p 'test_*.py'
+      - name: Verify candidate against the immutable public release
+        run: python3 -B scripts/publish.py prepare-current
+      - name: Audit, install, verify and uninstall only in disposable CI
+        run: bash scripts/verify-install.sh
