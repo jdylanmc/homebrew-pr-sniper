@@ -22,6 +22,22 @@ def manifest():
 
 
 class PublisherTests(unittest.TestCase):
+    def test_workflows_authenticate_both_metadata_and_homebrew_requests(self):
+        root = Path(__file__).resolve().parents[1]
+        for workflow in ("cask.yml", "publish.yml"):
+            content = (root / ".github/workflows" / workflow).read_text()
+            self.assertIn("GITHUB_TOKEN: ${{ github.token }}", content)
+            self.assertIn("HOMEBREW_GITHUB_API_TOKEN: ${{ github.token }}", content)
+
+    def test_native_verification_does_not_inherit_api_tokens(self):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-one", "HOMEBREW_GITHUB_API_TOKEN": "synthetic-two"}), \
+                patch.object(publish.subprocess, "run") as native:
+            native.return_value.returncode = 0
+            native.return_value.stdout = b"ok"
+            publish.native(["codesign", "--verify", "fixture"])
+            self.assertNotIn("GITHUB_TOKEN", native.call_args.kwargs["env"])
+            self.assertNotIn("HOMEBREW_GITHUB_API_TOKEN", native.call_args.kwargs["env"])
+
     def test_github_metadata_reads_use_scoped_token_but_downloads_do_not(self):
         with patch.dict(os.environ, {"GITHUB_TOKEN": "synthetic-api-token"}), \
                 patch.object(publish.urllib.request, "build_opener") as opener, \

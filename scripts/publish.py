@@ -205,7 +205,9 @@ def prepare(candidate=False):
 
 
 def native(args):
-    result = subprocess.run(args, capture_output=True, timeout=120, check=False)
+    environment = {name: value for name, value in os.environ.items()
+                   if name not in ("GITHUB_TOKEN", "HOMEBREW_GITHUB_API_TOKEN")}
+    result = subprocess.run(args, capture_output=True, timeout=120, check=False, env=environment)
     require(result.returncode == 0, "Native installed-app verification failed: " + args[0])
     return result.stdout or result.stderr
 
