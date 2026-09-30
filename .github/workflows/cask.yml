@@ -22,6 +22,8 @@ jobs:
       - name: Publisher contracts
         run: python3 -B -m unittest discover -s tests -p 'test_*.py'
       - name: Verify candidate against the immutable public release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: python3 -B scripts/publish.py prepare-current
       - name: Audit, install, verify and uninstall only in disposable CI
         run: bash scripts/verify-install.sh

@@ -36,6 +36,11 @@ The publisher runs from this repository's `main`, independently downloads and
 checks the public release/tag/manifest/checksum, and verifies the expected
 Developer ID team from the public `APPLE_TEAM_ID` repository variable. Apple
 private keys and signing credentials never enter this repository.
+GitHub metadata requests use the job's scoped API token, including public
+source-repository reads; they do not rely on the shared runner's unauthenticated
+API quota. Archive/CDN downloads remain credential-free. API errors distinguish
+an exhausted quota from other forbidden responses without exposing response
+bodies or token values.
 
 `Publish verified cask` handles `repository_dispatch` type `pr-sniper-release`
 with `client_payload.tag`, or manual workflow dispatch with an existing stable
