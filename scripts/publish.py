@@ -49,7 +49,7 @@ def api(path, method="GET", body=None, missing=False):
     require(path.startswith(f"/repos/{SOURCE}/") or path.startswith(f"/repos/{TAP}/"),
             "Unexpected GitHub repository.")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "pr-sniper-tap",
-               "X-GitHub-Api-Version": "2022-11-28"}
+               "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json"}
     if method != "GET":
         require(path == f"/repos/{TAP}/contents/Casks/pr-sniper.rb" and method == "PUT",
                 "Only the owned cask can be updated.")

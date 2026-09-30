@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -20,6 +21,12 @@ def manifest():
 
 
 class PublisherTests(unittest.TestCase):
+    def test_existing_cask_matches_the_publisher_format(self):
+        content = (Path(__file__).resolve().parents[1] / "Casks/pr-sniper.rb").read_text()
+        tag = "v" + re.search(r'^  version "([^"]+)"$', content, re.M)[1]
+        digest = re.search(r'^  sha256 "([^"]+)"$', content, re.M)[1]
+        self.assertEqual(content, publish.cask({"tag": tag, "sha256": digest}))
+
     def test_manifest_requires_exact_release_commit_architecture_and_team(self):
         value = manifest()
         publish.manifest_check(value, "v0.1.1", "a" * 40, "ABCDEFGHIJ")
