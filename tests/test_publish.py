@@ -68,6 +68,18 @@ class PublisherTests(unittest.TestCase):
                 self.assertNotIn("private body", str(result.exception))
                 self.assertNotIn("synthetic-api-token", str(result.exception))
 
+    def test_release_assets_allow_only_the_complete_windows_set_and_read_only_macos(self):
+        macos = ["manifest.json", "SHA256SUMS", "pr-sniper-0.1.1-aarch64-apple-darwin.zip"]
+        windows = ["windows-manifest.json", "WINDOWS-SHA256SUMS", "pr-sniper-0.1.1-x64-setup.exe"]
+        rows = lambda names: [{"name": name} for name in names]
+        for names in (macos, macos + windows):
+            with self.subTest(names=names):
+                self.assertEqual([row["name"] for row in publish.macos_assets(rows(names), "0.1.1")], macos)
+        for names in (macos[:2], macos + windows[:2], macos + ["other.zip"], macos + [macos[0]],
+                      macos + ["pr-sniper-0.1.2-x64-setup.exe", *windows[:2]]):
+            with self.subTest(names=names), self.assertRaises(publish.Failure):
+                publish.macos_assets(rows(names), "0.1.1")
+
     def test_existing_cask_matches_the_publisher_format(self):
         content = (Path(__file__).resolve().parents[1] / "Casks/pr-sniper.rb").read_text()
         tag = "v" + re.search(r'^  version "([^"]+)"$', content, re.M)[1]

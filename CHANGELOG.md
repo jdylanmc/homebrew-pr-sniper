@@ -6,6 +6,9 @@
 
 - Trust the PR Sniper cask before auditing and installing it, since Homebrew 7
   refuses to load casks from untrusted taps.
+- Accept a source release that also carries its complete Windows asset set,
+  reading only the macOS assets, so recovery and PR checks work after Windows
+  publication.
 
 ### Added
 
