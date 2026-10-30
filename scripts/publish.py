@@ -166,6 +166,17 @@ def remote_cask():
     return base64.b64decode(record["content"]).decode(), record["sha"]
 
 
+def macos_assets(rows, version):
+    macos = {"manifest.json", "SHA256SUMS", f"pr-sniper-{version}-aarch64-apple-darwin.zip"}
+    # The source release appends its Windows assets after the tap job; only the macOS set is read.
+    windows = {"windows-manifest.json", "WINDOWS-SHA256SUMS", f"pr-sniper-{version}-x64-setup.exe"}
+    names = [row["name"] for row in rows]
+    present = set(names)
+    require(len(names) == len(present) and macos <= present and present <= macos | windows
+            and present & windows in (set(), windows), "Unexpected release assets.")
+    return [row for row in rows if row["name"] in macos]
+
+
 def prepare(candidate=False):
     existing_candidate = CASK.read_text() if candidate else None
     tag = os.environ.get("RELEASE_TAG", "")
@@ -174,9 +185,7 @@ def prepare(candidate=False):
     release = api(f"/repos/{SOURCE}/releases/tags/{tag}")
     require(not release["draft"] and not release["prerelease"] and release["tag_name"] == tag
             and release["target_commitish"] == commit, "Release is not public at the expected source.")
-    rows = api(f"/repos/{SOURCE}/releases/{release['id']}/assets?per_page=100")
-    names = {"manifest.json", "SHA256SUMS", f"pr-sniper-{version}-aarch64-apple-darwin.zip"}
-    require(len(rows) == 3 and {row["name"] for row in rows} == names, "Unexpected release assets.")
+    rows = macos_assets(api(f"/repos/{SOURCE}/releases/{release['id']}/assets?per_page=100"), version)
     require(not ROOT.exists(), "Publisher staging already exists.")
     ROOT.mkdir(mode=0o700)
     for row in rows:

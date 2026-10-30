@@ -21,6 +21,7 @@ cleanup() {
 trap cleanup EXIT
 
 brew tap jdylanmc/pr-sniper https://github.com/jdylanmc/homebrew-pr-sniper
+brew trust --cask jdylanmc/pr-sniper/pr-sniper
 tap="$(brew --repository jdylanmc/pr-sniper)"
 cp Casks/pr-sniper.rb "$tap/Casks/pr-sniper.rb"
 brew style --cask jdylanmc/pr-sniper/pr-sniper
