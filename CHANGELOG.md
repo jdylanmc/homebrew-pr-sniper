@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Trust the PR Sniper cask before auditing and installing it, since Homebrew 7
+  refuses to load casks from untrusted taps.
+
 ### Added
 
 - Authenticate publisher metadata reads with the existing scoped Actions token;

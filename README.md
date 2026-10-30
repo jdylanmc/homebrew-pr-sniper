@@ -8,8 +8,13 @@ The cask references the immutable, Developer ID-signed and Apple-notarized
 Its checksum is verified against the published release manifest and archive.
 
 ```sh
+brew tap jdylanmc/pr-sniper
+brew trust --cask jdylanmc/pr-sniper/pr-sniper
 brew install --cask jdylanmc/pr-sniper/pr-sniper
 ```
+
+Homebrew 7 refuses to load casks from a tap you have not trusted; older
+Homebrew has no `brew trust` and needs only the install command.
 
 Quit PR Sniper before upgrading, then:
 
