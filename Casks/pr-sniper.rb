@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 cask "pr-sniper" do
-  version "0.7.1"
-  sha256 "aa0f5b56e65fcd4de14a803ae07c18b8cc9a8d80150804e779fe4c062bbbd3a4"
+  version "0.7.2"
+  sha256 "703d6891b3ed8c244e8b83974fb9d65cd5f65ade91dc61f2cc7259661b140c27"
 
   url "https://github.com/jdylanmc/pr-sniper/releases/download/v#{version}/pr-sniper-#{version}-aarch64-apple-darwin.zip"
   name "PR Sniper"
